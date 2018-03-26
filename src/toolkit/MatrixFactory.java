@@ -28,47 +28,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package polytope;
+package toolkit;
 
-import java.util.ArrayList;
-import java.util.List;
+public class MatrixFactory {
+    private static long [][] matrix=new long[3][3];
 
-public class LatticePolytope  extends AbstractPolytope {
-    int dimension;
-    protected ArrayList<Point> points=new ArrayList<>();
-
-    @Override
-    public boolean containsExtremalPoint(Point p) {
-        return points.contains(p);
+    public static long [][] getMatrix(int lines,int columns){
+            if(matrix.length<lines || matrix[0].length<columns)
+                matrix=new long[lines][columns];
+            return matrix;
     }
-
-    @Override
-    public ArrayList<Point> getPoints() {
-        return points;
-    }
-
-    public void addPoint(Point p){
-        points.add(p);
-    }
-
-    @Override
-    public String toString() {
-        points.sort(Point::compare);
-        return super.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) throws RuntimeException{
-        if(!(o instanceof LatticePolytope))
-            throw new RuntimeException("Ridges must be compared with other Ridges");
-        LatticePolytope r=(LatticePolytope) o;
-        if(r.points.size()!=points.size())
-            return false;
-        for(int i=0;i<points.size();i++)
-            if(!r.points.contains(points.get(i)))
-                return false;
-        return true;
-    }
-
 
 }

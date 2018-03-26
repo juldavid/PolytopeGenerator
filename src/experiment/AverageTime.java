@@ -28,47 +28,30 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package polytope;
+package experiment;
 
-import java.util.ArrayList;
-import java.util.List;
+import polytope.AbstractPolytope;
+import random.FirstMarkovChain;
 
-public class LatticePolytope  extends AbstractPolytope {
-    int dimension;
-    protected ArrayList<Point> points=new ArrayList<>();
+public class AverageTime {
+    public static void main(String [] args){
+        int numberOfExperiments=10;
+        int numberOfSizes=100;
+        int numberOfSteps=1000000;
+        long acc,before,after;
+        for(int k=40;k<=numberOfSizes;k++){
+            FirstMarkovChain fmc=new FirstMarkovChain(2,k);
+            fmc.initialize();
+            acc=0;
+            for(int i=0;i<numberOfExperiments;i++) {
+                before = System.nanoTime();
+                for (int j = 0; j < numberOfSteps; j++)
+                    fmc.nextStep();
+                after=System.nanoTime();
+                acc+=after-before;
+            }
+            System.out.println(k+" "+acc/(double)numberOfExperiments);
 
-    @Override
-    public boolean containsExtremalPoint(Point p) {
-        return points.contains(p);
+        }
     }
-
-    @Override
-    public ArrayList<Point> getPoints() {
-        return points;
-    }
-
-    public void addPoint(Point p){
-        points.add(p);
-    }
-
-    @Override
-    public String toString() {
-        points.sort(Point::compare);
-        return super.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) throws RuntimeException{
-        if(!(o instanceof LatticePolytope))
-            throw new RuntimeException("Ridges must be compared with other Ridges");
-        LatticePolytope r=(LatticePolytope) o;
-        if(r.points.size()!=points.size())
-            return false;
-        for(int i=0;i<points.size();i++)
-            if(!r.points.contains(points.get(i)))
-                return false;
-        return true;
-    }
-
-
 }
