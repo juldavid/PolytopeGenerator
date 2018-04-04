@@ -69,18 +69,24 @@ public class FirstMarkovChain extends MarkovChain {
             if(state.staysFullDimensionAfterDeletion(p)){
                 //System.out.println("Je supprime " +p+ " "+state.getPoints().size()+" "+state.getFacets().size());
                 state.getPoints().remove(p);
+                int size=state.getPoints().size();
+                String s=state.toString();
                 state = Quickhull.quickHull(state.getPoints(),dimension);
-                //System.out.println(state.getPoints().size()+" "+state.getFacets().size());
+                if(state.getPoints().size()!=size) {
+                    StringBuilder sb=new StringBuilder();
+                    for (Facet f2 : state.getFacets()) {
+                        sb.append(f2 + " et ses ridges ");
+                        for (Ridge r : f2.getRidges()) {
+                            sb.append(r + " - ");
+                        }
+                        sb.append("\n");
+                    }
+                    throw new RuntimeException("Convex hull should contains exactly " + size + " points after removing " + p + "but instead contains " + state.getPoints().size() + "\n" + s + "\n" + state+"\n"+sb.toString());
+                }
             }
         }
-        else {
+        else
             Quickhull.incrementalConvexHull(state, p);
-            //if(Quickhull.incrementalConvexHull(state, p))
-                //System.out.println("Point ajouté" +p);
-        }
-        if(state.getFacets().size()==0) {
-            throw new RuntimeException("WTF just happened"+p+"\n"+state);
-        }
         return state;
     }
 }

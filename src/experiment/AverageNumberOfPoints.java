@@ -47,15 +47,15 @@ public class AverageNumberOfPoints {
             for(int j=0;j<numberOfSteps;j++) {
                 lp = fmc.nextStep();
                 acc+=lp.getPoints().size();
-                //if(j==1000) result[k][0]=acc/1000.;
-                //if(j==10000) result[k][1]=acc/10000.;
-                //if(j==100000) result[k][2]=acc/100000.;
+                if(j==1000) result[k][0]=acc/1000.;
+                else if(j==10000) result[k][1]=acc/10000.;
+                else if(j==100000) result[k][2]=acc/100000.;
             }
-            //result[k][3]=acc/1000000.;
+            result[k][3]=acc/1000000.;
 
-            //for(int i=0;i<4;i++)
-            //System.out.println(k+" "+1000*Math.pow(10,i)+" "+result[k][i]);
-            System.out.println(k+" "+acc/(double)numberOfSteps);
+            for(int i=0;i<4;i++)
+                System.out.println(k+" "+1000*Math.pow(10,i)+" "+result[k][i]);
+            //System.out.println(k+" "+acc/(double)numberOfSteps);
 
         }
     }

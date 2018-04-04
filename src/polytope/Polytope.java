@@ -34,6 +34,17 @@ import java.util.Collection;
 import java.util.List;
 
 public interface Polytope {
+    /**
+     * Ensures that a Polytope objects will always contain a method that returns a Collection of its extremal points.
+     * @return a Collection of the polytope's extremal point.
+     */
     Collection<Point> getPoints();
+
+    /**
+     * Ensures that a Polytope objects will always contain a method that tests if a point belongs to the Collection
+     * of its extremal points.
+     * @param p is a d-dimensional point.
+     * @return true if p is an extremal point of the current polytope.
+     */
     boolean containsExtremalPoint(Point p);
 }

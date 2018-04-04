@@ -32,11 +32,15 @@ package polytope;
 
 import toolkit.GaussianEliminationLite;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 
 public class Facet extends LatticePolytope{
-    private ArrayList<Facet> neighbors=new ArrayList<>();
-    private ArrayList<Ridge> ridges=new ArrayList<>();
+
+    private HashSet<Ridge> ridges=new HashSet<>();
+
 
     private Point insidePoint;
     private GaussianEliminationLite normal;
@@ -71,11 +75,10 @@ public class Facet extends LatticePolytope{
 
     /**
      * Computes the normal vector of the facet.
+     * Time complexity: O(d^2), Space Complexity: O(d^2) in the worst case and O(1) in the best case.
      */
     private void NormalVector(){
         normal= new GaussianEliminationLite(points,points.get(0).getDimension());
-        //if(normal.getRank()!=points.size())
-            //throw new RuntimeException("Problem with a Facet: first d+1 points are not independant");
     }
 
     /**
@@ -84,12 +87,18 @@ public class Facet extends LatticePolytope{
      * @param p a point
      * @return the cross product of a point p and the normal vector.
      */
-    private double direction(Point p){
-        long sum=0;
-        long [] alpha=normal.getSolution();
+    private BigInteger direction(Point p){
+        BigInteger sum=BigInteger.ZERO;
+        BigInteger [] alpha=normal.getSolution();
         for(int i=0;i<p.getDimension();i++)
-            sum += p.getCoordinate(i) * alpha[i];
+            sum =  sum.add(alpha[i].multiply(BigInteger.valueOf(p.getCoordinate(i))));
         return sum;
+    }
+
+    private void computeVisibility(Point p){
+        BigInteger dir=direction(p);
+        BigInteger beta=normal.getBeta();
+        visibilityFromLastPoint=dir.compareTo(beta);
     }
 
     /**
@@ -99,16 +108,21 @@ public class Facet extends LatticePolytope{
      * @return true if p is above the facet, false otherwise.
      */
     public boolean isAbove(Point p) {
-        double dir=direction(p);
-        double beta=normal.getBeta();
-        visibilityFromLastPoint=(int)(dir-beta);
-        /*boolean res=(visibilityFromLastPoint>0);
-        if(res)
+        computeVisibility(p);
+        boolean res=(visibilityFromLastPoint>0);
+        /*if(visibilityFromLastPoint>0)
             System.out.println("La facette "+this +"est visible depuis "+p +" "+dir+" "+beta+" "+ insidePoint + direction(insidePoint));
-        else
+        else if(visibilityFromLastPoint<0)
             System.out.println("La facette "+this +"n'est  pas visible depuis "+p +" "+dir+" "+beta+" "+ insidePoint + direction(insidePoint));
-        return res;*/
-        return  (visibilityFromLastPoint>0);
+        else
+            System.out.println("Le point "+p+" est sur l'hyperplan de "+this+" "+dir+" "+beta+" "+ insidePoint + direction(insidePoint));*/
+        return res;
+        //return  (visibilityFromLastPoint>0);
+    }
+
+    public boolean isPointOnTheHyperplane(Point p){
+        computeVisibility(p);
+        return (visibilityFromLastPoint==0);
     }
 
     /**
@@ -126,17 +140,9 @@ public class Facet extends LatticePolytope{
      * @param pInside a d-dimensional point.
      */
     private void setDirection(Point pInside){
-        if(direction(pInside)> normal.getBeta())
+        computeVisibility(pInside);
+        if(visibilityFromLastPoint>0)
             normal.inverse();
-    }
-
-    /**
-     * Returns the number of facets that share a ridge with the current one.
-     * Time and Space Complexity: O(1)
-     * @return the number of facets that share a ridge with the current one.
-     */
-    public int getNumberOfNeighbors(){
-        return neighbors.size();
     }
 
     /**
@@ -147,64 +153,45 @@ public class Facet extends LatticePolytope{
      * @return the neighbor connected with the current facet by the point p
      */
     public Facet getNeighbor2D(Point p) {
-        int pos;
-        if((ridges.get(0).getPoints().contains(p)))
-                pos=0;
-        else if((ridges.get(1).getPoints().contains(p)))
-            pos=1;
-        else throw new RuntimeException("Point is not in the neighborhood");
-        if(this==ridges.get(pos).getFirst())
-            return ridges.get(pos).getSecond();
-        return ridges.get(pos).getFirst();
+        Ridge res = null;
+        for(Ridge r:ridges){
+            if((r.getPoints().contains(p))) {
+                res = r;
+                break;
+            }
+        }
+        if(res==null) throw new RuntimeException("Point is not in the neighborhood");
+        if(this==res.getFirst())
+            return res.getSecond();
+        return res.getFirst();
     }
 
     /**
-     * Returns the i-th adjacent facet.
-     * Time and Space Complexity: O(1)
-     * @param i an index.
-     * @return the i-th adjacent facet.
+     * Returns the facet's list of ridges.
+     * @return the facet's list of ridges.
      */
-    public Facet getNeighbor(int i){
-        return neighbors.get(i);
-    }
-    /**
-     * Returns the i-th ridge
-     * Time and Space Complexity: O(1)
-     * @param i an index.
-     * @return the i-th ridge
-     */
-
-    public Ridge getRidge(int i){
-        return ridges.get(i);
+    public Collection<Ridge> getRidges() {
+        return ridges;
     }
 
     /**
      * Connects the facet 'neighbor' to the current one using the ridge 'ridge'
      * TODO: check if the test "contains" is needed in order to improve the complexity
      * Amortized time and space complexity: O(1). If the test if removed.
-     * @param neighbor the new adjacent facet
      * @param ridge the new ridge that connects the current facet and "neighbor"
      */
-    void addNeighbor(Facet neighbor, Ridge ridge){
-        if(!ridges.contains(ridge)) {
-            neighbors.add(neighbor);
-            ridges.add(ridge);
-        }
-        else
+    void addNeighbor(Ridge ridge){
+        if(!ridges.add(ridge))
             throw new RuntimeException("The neighbor already exists");
     }
 
     /**
      * Remove the adjacent facet connected to the current one by the ridge r
-     * Time Complexity: O(|this.neighbors|+|this+ridges|)
+     * Time Complexity: O(|this+ridges|)
      * @param r the ridge that identifies the adjacent facet where' going to remove.
      */
     void removeNeighbor(Ridge r) {
-        int i = ridges.indexOf(r);
-        if (i >= 0) {
-            neighbors.remove(i);
-            ridges.remove(i);
-        } else {
+        if(!ridges.remove(r)){
             StringBuilder sb=new StringBuilder();
             for(Ridge r2:ridges) {
                 sb.append(r2);
@@ -215,40 +202,16 @@ public class Facet extends LatticePolytope{
     }
 
     /**
-     * Replaces an adjacent facet by a new one.
-     * Time Complexity:O(|ridges|) Space Complexity:O(1).
-     * @param neighbor the new facet
-     * @param ridge the ridge that connects the current facet to the new one.
-     */
-    public void replaceNeighbor(Facet neighbor, Ridge ridge) {
-        int i=ridges.indexOf(ridge);
-        Facet f;
-        //System.out.println("Facette "+this+": remplacement de "+neighbors.get(i)+" par "+neighbor+" sur le ridge "+ridge);
-        if(i>=0) {
-            f=neighbors.get(i);
-            neighbors.set(i, neighbor);
-            if(ridge.first==f)
-                ridge.first=neighbor;
-            else
-                ridge.second=neighbor;
-        }
-        else
-            throw new RuntimeException("Can't replace a neighbor connected with ridge"+ridge);
-        //for(i=0;i<neighbors.size();i++)
-          //  System.out.println("Voisin : "+neighbors.get(i)+ " par ridge : "+ridges.get(i));
-    }
-
-    /**
      * Computes the distance between a d-dimensional point and the current facet.
      * Time Complexity: O(d), Space complexity: O(1)
      * @param point a d-dimensional point
      * @return the distance between a d-dimensional point and the current facet.
      */
-    private long distance(Point point){
-        long res=0;
-        long [] alpha=normal.getSolution();
+    private BigInteger distance(Point point){
+        BigInteger res=BigInteger.ZERO;
+        BigInteger [] alpha=normal.getSolution();
         for(int i=0;i<point.getDimension();i++)
-           res+= (point.getCoordinate(i)*alpha[i])-(points.get(0).getCoordinate(i)*alpha[i]);
+           res= res.add(alpha[i].multiply(BigInteger.valueOf(point.getCoordinate(i))).subtract(alpha[i].multiply(BigInteger.valueOf(points.get(0).getCoordinate(i)))));
         return res;
     }
 
@@ -260,11 +223,11 @@ public class Facet extends LatticePolytope{
      */
     private int mostDistantPoint(ArrayList<Point> outside){
         int posMin=0;
-        long distMin=distance(outside.get(0));
-        long dist;
+        BigInteger distMin=distance(outside.get(0));
+        BigInteger dist;
         for(int i=1;i<outside.size();i++) {
             dist=distance(outside.get(i));
-            if(distMin>dist){
+            if(distMin.compareTo(dist)<0){
                 distMin=dist;
                 posMin=i;
             }
@@ -302,15 +265,5 @@ public class Facet extends LatticePolytope{
         return res;
     }
 
-    /**
-     * Tests whether the facet given as a parameter is adjacent to the current one.
-     * Time Complexity:O(|this.facet|), Space Complexity: O(1)
-     * @param facet a facet.
-     * @return true if the facet given as a parameter is adjacent to the current one, false otherwise.
-     */
-    public Ridge isNeighbor(Facet facet) {
-        int pos=neighbors.indexOf(facet);
-        return (pos>0)?ridges.get(pos):null;
-    }
 
 }

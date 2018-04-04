@@ -35,12 +35,12 @@ import random.FirstMarkovChain;
 
 public class SingleObject {
     public static void main(String [] args){
-        FirstMarkovChain fmc=new FirstMarkovChain(3,50);
+        FirstMarkovChain fmc=new FirstMarkovChain(3,8);
         System.out.println("Initialisation:");
         FullDimensionPolytope lp=fmc.initialize();
         System.out.println(lp);
 
-        for(int i=0;i<2000;i++) {
+        for(int i=0;i<100000;i++) {
             lp = fmc.nextStep();
         }
         lp.printToFile("test.plot");

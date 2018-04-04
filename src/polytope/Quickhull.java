@@ -37,14 +37,19 @@ import java.util.*;
 public class Quickhull {
     private static ArrayDeque<Facet> facetsWithOutsideSet=new ArrayDeque<>();
     private static ArrayDeque<ArrayList<Point>> outsideSets=new ArrayDeque<>();
-    private static ArrayList<Facet> visible=new ArrayList<>();
+    private static HashSet<Facet> visible=new HashSet<>();
     private static ArrayList<Facet> modified=new ArrayList<>();
     private static ArrayList<Ridge> frontier=new ArrayList<>();
-    private static FullDimensionPolytope res;
+    private static FullDimensionPolytope tmpVar;
 
 
-
-    private static void partition(List<Facet> facets,List<Point> points){
+    /**
+     * Partitions the list of d-dimensional Point 'points' by assigning them to the first facet that visible from them.
+     * Worst Case Time Complexity: O(|facets|*|points|*d), Worst case Space Complexity: O(|points|)
+     * @param facets list of facets of the polytope.
+     * @param points list of points to partition.
+     */
+    private static void partition(Collection<Facet> facets,List<Point> points){
         for(Facet f:facets){
             ListIterator<Point> unseenPoints=points.listIterator();
             ArrayList<Point> outside=new ArrayList<>();
@@ -69,24 +74,23 @@ public class Quickhull {
         modified.clear();
         //---------------
         visible.add(f);
-        HashSet<Facet> seen = new HashSet<>();
-        seen.add(f);
         ArrayDeque<Facet> queue=new ArrayDeque<>();
         queue.add(f);
         Facet tmp,neighbor;
         while (!queue.isEmpty()){
             tmp=queue.remove();
-            for(int i=0;i<tmp.getNumberOfNeighbors();i++){
-                neighbor=tmp.getNeighbor(i);
+            for(Ridge r:tmp.getRidges()){
+                neighbor=r.getNeighbor(tmp);
+                if(!tmpVar.getFacets().contains(neighbor))
+                    throw new RuntimeException("This facet should have been deleted earlier "+f+"\n"+tmp+"\n"+neighbor);
                 if (neighbor.isAbove(p)) {
-                    if (!seen.contains(neighbor)) {
+                    if (!visible.contains(neighbor)) {
                         //System.out.println("Ajout de la facette visible "+neighbor+" à partir de "+tmp);
                         visible.add(neighbor);
-                        seen.add(neighbor);
                         queue.add(neighbor);
                     }
                 }
-                else frontier.add(tmp.getRidge(i));
+                else frontier.add(r);
             }
         }
     }
@@ -109,30 +113,36 @@ public class Quickhull {
                 points.add(p);
                 Facet f = new Facet(points, v.getInsidePoint());
                 res.add(f);
-                f.addNeighbor(nv, r);
-                nv.replaceNeighbor(f, r);
+                //System.out.println("ici on remplace la facette "+v+" connectée à "+r.getNeighbor(v));
+                r.replaceNeighbor(v,f);
+                v.removeNeighbor(r);
+                f.addNeighbor(r);
             }
             else{
                 if(!v.lastPointOnTheHyperplane()){
+                    //System.out.println("ici on supprime "+r+ " qui relie "+v+ " et "+nv);
                     nv.addPoint(p);
                     modified.add(nv);
                     nv.removeNeighbor(r);
                     v.removeNeighbor(r);
                 }
-                else
+                else {
+                    r.getFirst().addPoint(p);
+                    r.getSecond().addPoint(p);
                     r.addPoint(p);
+                }
             }
         }
         return res;
     }
 
-    private static boolean absorbedPoint(FullDimensionPolytope fdp) {
+    private static boolean absorbedPoint(FullDimensionPolytope fdp,Point newP) {
         ArrayList<Point> points=fdp.getPoints();
-        List<Facet> facets= fdp.getFacets();
+        Collection<Facet> facets= fdp.getFacets();
         for(Point p:points){
             boolean b=false;
             for(Facet f:facets){
-                if(f.getPoints().contains(p) && !visible.contains(f) && !f.lastPointOnTheHyperplane()) {
+                if(f.getPoints().contains(p) && !visible.contains(f) && !f.isPointOnTheHyperplane(newP)) {
                     b = true;
                     break;
                 }
@@ -143,51 +153,32 @@ public class Quickhull {
         return false;
     }
 
-    private static void removeRidgesAndNeighbors(){
-        for(int i=0;i<visible.size();i++){
-            Facet f1=visible.get(i);
-            for(int j=i+1;j<visible.size();j++){
-                Ridge ridge=f1.isNeighbor(visible.get(j));
-                if(ridge!=null) {
-                    f1.removeNeighbor(ridge);
-                    visible.get(j).removeNeighbor(ridge);
-                }
-            }
-        }
-    }
-
 
     private static void convexHull(FullDimensionPolytope res, List<Point> points, int dimension){
+        tmpVar=res;
         StringBuilder sb=new StringBuilder();
-        /*sb.append(" Simplexe de départ ");
-        for(Point p2:res.getPoints())
-            sb.append(p2);
-        sb.append("\n ");
-        for(Facet f2:res.getFacets())
-            sb.append(f2+"\n");
-        sb.append(" Points à ajouter  ");
-        for(Point p2:points)
-            sb.append(p2);*/
-
         partition(res.getFacets(),points);
+
         while(!facetsWithOutsideSet.isEmpty()){
             Facet f=facetsWithOutsideSet.remove();
             ArrayList<Point> outside=outsideSets.remove();
-            Point p=f.extractMostDistantPoint(outside);
-            //System.out.println("Recalcul, Point à ajouter "+p);
-            setVisibleAndFrontier(f,p);
-            if(visible.size()==res.getFacets().size()) {
-                throw new RuntimeException("Ici "+ p + "\n" + sb.toString());
+            if(!res.getFacets().contains(f))
+                partition(res.getFacets(), outside);
+            else {
+                Point p = f.extractMostDistantPoint(outside);
+                //System.out.println("Point à ajouter "+p);
+                setVisibleAndFrontier(f, p);
+                List<Facet> newFacets = setNewFacets(p);
+                res.addNeighbors(newFacets, modified);
+                res.addExtremalPointAndReplaceFacets(p, newFacets, visible);
+                //partition(newFacets, outside);
+                partition(res.getFacets(), outside);
             }
-            List<Facet> newFacets=setNewFacets(p);
-            res.addNeighbors(newFacets,modified);
-            partition(newFacets,outside);
-            res.addExtremalPointAndReplaceFacets(p,newFacets,visible);
         }
     }
 
     public static FullDimensionPolytope quickHull(ArrayList<Point> points, int dimension) {
-        res=new FullDimensionPolytope(dimension);
+        FullDimensionPolytope res=new FullDimensionPolytope(dimension);
         ArrayList<Point> firsts=new ArrayList<>();
         StringBuilder sb=new StringBuilder();
         int numberOfTest=points.size()-dimension-1;
@@ -202,24 +193,38 @@ public class Quickhull {
             }
             if (GaussianEliminationLite.getRank(firsts) == (dimension + 1)) {
                 res.createSimplex(firsts);
-                convexHull(res, points, dimension);
+                //convexHull(res, points, dimension);
+                slowConvexHull(res,points);
                 return res;
             }
         }
         throw new RuntimeException("Is this ever gonna end? ");
     }
 
+    private static void slowConvexHull(FullDimensionPolytope res, List<Point> points){
+        StringBuilder sb=new StringBuilder();
+        for(Point p:points)
+            sb.append(p);
+        for(Point p:points){
+            if(!incrementalConvexHull(res,p)) {
+                throw new RuntimeException("Et bin même pas \n"+sb.toString()+"\n"+p);
+            }
+        }
+    }
+
     public static boolean incrementalConvexHull(FullDimensionPolytope fdp,Point p){
         List<Point> list=new ArrayList<>();
         List<Facet> newFacets;
         list.add(p);
+        tmpVar=fdp;
         partition(fdp.getFacets(),list); //Assign the point to a facet that's visible from it
         if(facetsWithOutsideSet.isEmpty())
             return false;
         setVisibleAndFrontier(facetsWithOutsideSet.remove(),outsideSets.remove().get(0)); //Compute all visibile Facets and the frontier.
-        if(absorbedPoint(fdp))
+        if(absorbedPoint(fdp,p)) {
+            //System.out.println(p + " est absorbant");
             return false;
-        //System.out.println("J'ajoute "+p);
+        }
 
         if(visible.size()==fdp.getFacets().size())
             throw new RuntimeException("Ici");

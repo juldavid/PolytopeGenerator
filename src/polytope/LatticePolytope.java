@@ -62,6 +62,8 @@ public class LatticePolytope  extends AbstractPolytope {
         if(!(o instanceof LatticePolytope))
             throw new RuntimeException("Ridges must be compared with other Ridges");
         LatticePolytope r=(LatticePolytope) o;
+        //if(o instanceof Facet)
+            //System.out.println("Test d'égalité de la facette "+o+" avec "+this);
         if(r.points.size()!=points.size())
             return false;
         for(int i=0;i<points.size();i++)

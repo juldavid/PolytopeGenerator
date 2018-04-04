@@ -30,12 +30,15 @@
 
 package toolkit;
 
-public class MatrixFactory {
-    private static long [][] matrix=new long[3][3];
+import java.math.BigInteger;
 
-    public static long [][] getMatrix(int lines,int columns){
+public class MatrixFactory {
+    //private static long [][] matrix=new long[3][3];
+    private static BigInteger [][] matrix=new BigInteger[3][3];
+
+    public static BigInteger [][] getMatrix(int lines,int columns){
             if(matrix.length<lines || matrix[0].length<columns)
-                matrix=new long[lines][columns];
+                matrix=new BigInteger[lines][columns];
             return matrix;
     }
 

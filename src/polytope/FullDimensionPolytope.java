@@ -32,13 +32,12 @@ package polytope;
 
 import toolkit.GaussianEliminationLite;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class FullDimensionPolytope extends LatticePolytope {
     private ArrayList<Facet> facets=new ArrayList<>();
+    //private HashSet<Facet> facets=new HashSet<>();
+
 
     /**
      * Creates a new instance of a pDimension-dimensional FullDimensionPolytope
@@ -54,10 +53,18 @@ public class FullDimensionPolytope extends LatticePolytope {
      * @param newF a list of facets to add
      * @param oldF a list of points to remove
      */
-    public void addExtremalPointAndReplaceFacets(Point p,List<Facet> newF,List<Facet> oldF){
+    public void addExtremalPointAndReplaceFacets(Point p,Collection<Facet> newF,Collection<Facet> oldF){
         points.add(p);
+        //System.out.println("------------");
         for(Facet f:oldF) {
             //System.out.println("Supprimé "+f +"Point opposé " +f.getInsidePoint());
+            for(Ridge r:f.getRidges()){
+                if(r.getSecond().equals(f)||r.getFirst().equals(f)){
+                    if(!oldF.contains(r.getNeighbor(f)))
+                        throw new RuntimeException("Un voisinage n'a pas été supprimé "+f+" - "+r.getNeighbor(f));
+                }
+
+            }
             if(!facets.remove(f)) {
                 StringBuilder sb=new StringBuilder();
                 for(Facet f2:oldF) {
@@ -89,8 +96,8 @@ public class FullDimensionPolytope extends LatticePolytope {
         Ridge r=f1.intersection(f2);
         if(r.getPoints().size() == (dimension -1)) {
             if(GaussianEliminationLite.getRank(r.points)==(dimension-1)){
-                f1.addNeighbor(f2, r);
-                f2.addNeighbor(f1, r);
+                f1.addNeighbor(r);
+                f2.addNeighbor(r);
                 //System.out.println("Ajout des voisins "+f1 +" et "+f2+"par le ridge "+r);
             }
         }
